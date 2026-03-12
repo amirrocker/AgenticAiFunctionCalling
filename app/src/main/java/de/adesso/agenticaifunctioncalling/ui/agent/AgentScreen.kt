@@ -9,8 +9,22 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,9 +33,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -30,25 +62,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.adesso.agenticaifunctioncalling.model.ChatMessage
 import de.adesso.agenticaifunctioncalling.model.FunctionResult
 import de.adesso.agenticaifunctioncalling.model.ModelState
 import de.adesso.agenticaifunctioncalling.model.Role
-import de.adesso.agenticaifunctioncalling.ui.DownloadOverlay
-import de.adesso.agenticaifunctioncalling.ui.GreenPrimary
-import de.adesso.agenticaifunctioncalling.ui.Muted
-import de.adesso.agenticaifunctioncalling.ui.OnSurfaceText
-import de.adesso.agenticaifunctioncalling.ui.SurfaceBot
-import de.adesso.agenticaifunctioncalling.ui.SurfaceTool
-import de.adesso.agenticaifunctioncalling.ui.SurfaceUser
+import de.adesso.agenticaifunctioncalling.navigation.NavigationDestination
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Root screen
-// ─────────────────────────────────────────────────────────────────────────────
+private val GreenPrimary = Color(0xFF3DDC84)
+private val SurfaceUser = Color(0xFF1E4A2E)
+private val SurfaceBot = Color(0xFF1C2733)
+private val SurfaceTool = Color(0xFF1A1A2E)
+private val SurfaceNav = Color(0xFF1A2535)
+private val OnSurfaceText = Color(0xFFDCE8F0)
+private val Muted = Color(0xFF8BA5BB)
 
 @Composable
 fun AgentScreen(
@@ -60,38 +91,34 @@ fun AgentScreen(
         containerColor = Color(0xFF0D1B2A),
         topBar = { AgentTopBar() },
         bottomBar = {
-            InputBar(
-                text       = uiState.inputText,
-                enabled    = uiState.modelState is ModelState.Ready && !uiState.isThinking,
-                onTextChange = viewModel::onInputChange,
-                onSend     = viewModel::sendMessage
-            )
+            Column {
+                NavChipRow(onNavigateTo = viewModel::navigateTo)
+                InputBar(
+                    text = uiState.inputText,
+                    enabled = uiState.modelState is ModelState.Ready && !uiState.isThinking,
+                    onTextChange = viewModel::onInputChange,
+                    onSend = viewModel::sendMessage
+                )
+            }
         }
     ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
+        Box(
+            Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
             when (val state = uiState.modelState) {
-                is ModelState.Absent ->
-                    StatusOverlay("Prüfe Modell…")
-
-                is ModelState.Downloading ->
-                    DownloadOverlay(state)
-
-                is ModelState.Error ->
-                    StatusOverlay("Fehler: ${state.message}", isError = true)
-
-                is ModelState.Ready ->
-                    MessageList(
-                        messages   = uiState.messages,
-                        isThinking = uiState.isThinking
-                    )
+                is ModelState.Absent -> StatusOverlay("Prüfe Modell…")
+                is ModelState.Downloading -> DownloadOverlay(state)
+                is ModelState.Error -> StatusOverlay("Fehler: ${state.message}", isError = true)
+                is ModelState.Ready -> MessageList(
+                    messages = uiState.messages,
+                    isThinking = uiState.isThinking
+                )
             }
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TopBar
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,36 +133,53 @@ private fun AgentTopBar() {
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Android Agent",
-                    color = OnSurfaceText,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("Android Agent", color = OnSurfaceText, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.width(6.dp))
-                Text(
-                    text = "LiteRT-LM · Gemma 3 1B",
-                    fontSize = 11.sp,
-                    color = Muted
-                )
+                Text("LiteRT-LM · Gemma 3 1B", fontSize = 11.sp, color = Muted)
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color(0xFF112233)
-        )
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF112233))
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Message list
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun NavChipRow(onNavigateTo: (NavigationDestination) -> Unit) {
+    Surface(color = Color(0xFF0D1B2A)) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val chips = listOf(
+                "Deposits" to NavigationDestination.Deposits,
+                "Relocation" to NavigationDestination.Relocation(),
+                "Contracts" to NavigationDestination.Contracts,
+            )
+            items(chips) { (label, dest) ->
+                FilterChip(
+                    selected = false,
+                    onClick = { onNavigateTo(dest) },
+                    label = { Text(label, fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = SurfaceNav,
+                        labelColor = Muted,
+                        selectedContainerColor = GreenPrimary.copy(alpha = 0.2f)
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = false,
+                        borderColor = Color(0xFF2A3F55),
+                        selectedBorderColor = GreenPrimary
+                    )
+                )
+            }
+        }
+    }
+}
 
 @Composable
-private fun MessageList(
-    messages: List<ChatMessage>,
-    isThinking: Boolean
-) {
+private fun MessageList(messages: List<ChatMessage>, isThinking: Boolean) {
     val listState = rememberLazyListState()
-    val scope     = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty())
@@ -152,9 +196,7 @@ private fun MessageList(
             AnimatedVisibility(
                 visible = true,
                 enter = fadeIn() + slideInVertically { it / 2 }
-            ) {
-                MessageBubble(msg)
-            }
+            ) { MessageBubble(msg) }
         }
 
         if (isThinking && (messages.isEmpty() || !messages.last().isStreaming)) {
@@ -162,10 +204,6 @@ private fun MessageList(
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Message bubble
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun MessageBubble(msg: ChatMessage) {
@@ -175,7 +213,6 @@ private fun MessageBubble(msg: ChatMessage) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
-        // ── Label ─────────────────────────────────────────────────────────────
         Text(
             text = if (isUser) "Du" else "Assistent",
             fontSize = 11.sp,
@@ -183,7 +220,6 @@ private fun MessageBubble(msg: ChatMessage) {
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
 
-        // ── Chat text ─────────────────────────────────────────────────────────
         if (msg.text.isNotBlank()) {
             Surface(
                 shape = RoundedCornerShape(
@@ -204,10 +240,8 @@ private fun MessageBubble(msg: ChatMessage) {
             }
         }
 
-        // ── Streaming cursor ──────────────────────────────────────────────────
         if (msg.isStreaming) StreamingCursor()
 
-        // ── Function call chip ────────────────────────────────────────────────
         msg.functionCall?.let { call ->
             Spacer(Modifier.height(4.dp))
             Surface(
@@ -217,14 +251,14 @@ private fun MessageBubble(msg: ChatMessage) {
             ) {
                 Column(Modifier.padding(10.dp)) {
                     Text(
-                        text = "⚙ ${call.name}",
+                        "⚙ ${call.name}",
                         color = GreenPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                     call.args.forEach { (k, v) ->
                         Text(
-                            text = "  $k: $v",
+                            "  $k: $v",
                             color = Muted,
                             fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace
@@ -234,28 +268,46 @@ private fun MessageBubble(msg: ChatMessage) {
             }
         }
 
-        // ── Function result ───────────────────────────────────────────────────
         msg.functionResult?.let { result ->
             Spacer(Modifier.height(3.dp))
-            val (icon, text, tint) = when (result) {
-                is FunctionResult.Success -> Triple(Icons.Filled.CheckCircle, result.message, GreenPrimary)
-                is FunctionResult.Failure -> Triple(Icons.Filled.Error, result.reason, Color(0xFFFF6B6B))
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.widthIn(max = 300.dp)
-            ) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(5.dp))
-                Text(text, color = tint, fontSize = 12.sp, fontStyle = FontStyle.Italic)
+            when (result) {
+                is FunctionResult.Success -> ResultRow(
+                    icon = Icons.Filled.CheckCircle,
+                    text = result.message,
+                    tint = GreenPrimary
+                )
+
+                is FunctionResult.Failure -> ResultRow(
+                    icon = Icons.Filled.Error,
+                    text = result.reason,
+                    tint = Color(0xFFFF6B6B)
+                )
+
+                is FunctionResult.Navigation -> ResultRow(
+                    icon = Icons.Filled.Navigation,
+                    text = "Navigiert zu: ${result.destination}",
+                    tint = Color(0xFF64B5F6)   // light blue for nav
+                )
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Thinking / streaming indicators
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun ResultRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    tint: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.widthIn(max = 300.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(text, color = tint, fontSize = 12.sp, fontStyle = FontStyle.Italic)
+    }
+}
 
 @Composable
 private fun ThinkingIndicator() {
@@ -267,7 +319,8 @@ private fun ThinkingIndicator() {
         repeat(3) { index ->
             val inf = rememberInfiniteTransition(label = "dot$index")
             val alpha by inf.animateFloat(
-                initialValue = 0.2f, targetValue = 1f,
+                initialValue = 0.2f,
+                targetValue = 1f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(durationMillis = 500),
                     repeatMode = RepeatMode.Reverse,
@@ -290,11 +343,9 @@ private fun ThinkingIndicator() {
 private fun StreamingCursor() {
     val inf = rememberInfiniteTransition(label = "cursor")
     val alpha by inf.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500),
-            repeatMode = RepeatMode.Reverse
-        ),
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
         label = "cursorAlpha"
     )
     Box(
@@ -305,26 +356,58 @@ private fun StreamingCursor() {
     )
 }
 
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Generic status overlay
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
-private fun StatusOverlay(message: String, isError: Boolean = false) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun DownloadOverlay(state: ModelState.Downloading) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Gemma 3 1B herunterladen…", color = OnSurfaceText, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(16.dp))
+
+        if (state.progress.totalBytes > 0) {
+            LinearProgressIndicator(
+                progress = { state.progress.percent / 100f },
+                modifier = Modifier.fillMaxWidth(),
+                color = GreenPrimary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "${state.progress.percent}%  " +
+                        "(${state.progress.bytesReceived / 1_048_576} MB " +
+                        "/ ${state.progress.totalBytes / 1_048_576} MB)",
+                color = Muted,
+                fontSize = 12.sp
+            )
+        } else {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = GreenPrimary)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "${state.progress.bytesReceived / 1_048_576} MB empfangen…",
+                color = Muted,
+                fontSize = 12.sp
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
         Text(
-            text = message,
-            color = if (isError) Color(0xFFFF6B6B) else Muted,
-            fontSize = 14.sp
+            text = "Das Modell (~600 MB) wird einmalig auf dem Gerät gespeichert.",
+            color = Muted,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center
         )
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Input bar
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun StatusOverlay(message: String, isError: Boolean = false) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(message, color = if (isError) Color(0xFFFF6B6B) else Muted, fontSize = 14.sp)
+    }
+}
 
 @Composable
 private fun InputBar(
@@ -333,10 +416,7 @@ private fun InputBar(
     onTextChange: (String) -> Unit,
     onSend: () -> Unit
 ) {
-    Surface(
-        color = Color(0xFF112233),
-        shadowElevation = 8.dp
-    ) {
+    Surface(color = Color(0xFF112233), shadowElevation = 8.dp) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -361,9 +441,7 @@ private fun InputBar(
                 ),
                 maxLines = 4
             )
-
             Spacer(Modifier.width(8.dp))
-
             FilledIconButton(
                 onClick = onSend,
                 enabled = enabled && text.isNotBlank(),

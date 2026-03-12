@@ -17,13 +17,8 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
-/**
- * Single Koin module for the whole app.
- * Scoped as singletons where lifecycle matters (Engine, ViewModel).
- */
 val appModule = module {
 
-    // ── Ktor HttpClient ───────────────────────────────────────────────────────
     single<HttpClient> {
         HttpClient(Android) {
             install(ContentNegotiation) {
@@ -40,28 +35,26 @@ val appModule = module {
         }
     }
 
-    // ── Repository ────────────────────────────────────────────────────────────
-//    single { ModelRepository(androidContext(), get()) }
-    single { ModelRepository(androidContext(), get(), hfApiKey = "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") }
+    single {
+        ModelRepository(
+            androidContext(),
+            get(),
+            hfApiKey = "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"
+        )
+    }
 
-    // ── LiteRT-LM Engine ──────────────────────────────────────────────────────
-    // Created lazily; path resolved from ModelRepository at runtime
     single { LiteRtEngine(get<ModelRepository>().modelPath) }
 
-    // ── Dispatcher ────────────────────────────────────────────────────────────
     single { FunctionDispatcher(androidContext()) }
 
-    // ── Parser (stateless object – still registered for testability) ──────────
     single { FunctionCallParser }
 
-    // ── ViewModel ─────────────────────────────────────────────────────────────
     viewModel {
         AgentViewModel(
-            context = androidContext(),
             engine = get(),
-            parser = get(),
             dispatcher = get(),
             repository = get(),
+            context = androidContext(),
         )
     }
 }
