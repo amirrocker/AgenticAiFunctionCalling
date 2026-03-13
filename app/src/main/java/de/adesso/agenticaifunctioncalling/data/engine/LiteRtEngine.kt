@@ -8,10 +8,7 @@ import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
-import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
-import com.google.ai.edge.litertlm.SamplerConfig
-import com.google.ai.edge.litertlm.tool
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.File
@@ -39,9 +36,6 @@ class LiteRtEngine(
     private var engine: Engine? = null
     private var conversation: Conversation? = null
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
-
-
     fun initialize(context: Context) {
         Log.d(TAG, "Initializing LiteRT-LM engine from $modelPath")
 
@@ -61,78 +55,15 @@ class LiteRtEngine(
         )
         engine = Engine(config).apply { initialize() }
 
-        // setup tool
-//        val toolset = GuardrailToolSet(blackboardDao)
+        // setup conversation
         val configWithTool = ConversationConfig(
             systemInstruction = Contents.of(SYSTEM_PROMPT),
-//            systemInstruction = Contents.of("Act as an Agent with multiple roles: researcher, validator, and writer."),
 //            tools = listOf(tool(toolset))
         )
 
         // create single session (only one supported at a time)
         conversation = engine?.createConversation(configWithTool)
-
-
-//        // Load native dependencies in order (some depend on others)
-//        val nativeLibraryOrder = listOf(
-//            // Try standard NDK C++ library first
-//            "c++_shared",
-//            // Then LiteRT-LM library variations
-//            "litertlm",
-//            "litertlm_android",
-//            "genai_litertlm"
-//        )
-//
-//        val loadedLibraries = mutableListOf<String>()
-//
-//        for (libName in nativeLibraryOrder) {
-//            try {
-//                System.loadLibrary(libName)
-//                loadedLibraries.add(libName)
-//                Log.d(TAG, "Native library '$libName' loaded successfully")
-//            } catch (e: UnsatisfiedLinkError) {
-//                Log.w(TAG, "Could not load native library '$libName': ${e.message}")
-//                // Continue trying other libraries
-//            }
-//        }
-//
-//        if (loadedLibraries.isEmpty()) {
-//            Log.e(TAG, "Failed to load any native LiteRT-LM libraries")
-//            throw RuntimeException(
-//                "Could not load LiteRT-LM native libraries. " +
-//                "Tried: $nativeLibraryOrder. " +
-//                "Ensure: 1) LiteRT-LM AAR is in dependencies, " +
-//                "2) Native .so files are packaged for arm64-v8a, " +
-//                "3) Your device supports arm64-v8a architecture."
-//            )
-//        }
-//
-//        Log.d(TAG, "Successfully loaded native libraries: $loadedLibraries")
-//
-//        val engineConfig = EngineConfig(
-//            modelPath = modelPath,
-//            backend   = Backend.CPU()        // falls back to CPU automatically
-//        )
-//
-//        Engine.setNativeMinLogSeverity(LogSeverity.ERROR) // silence noisy log for the TUI.
-//
-//        Engine(engineConfig).use { engine ->
-//            engine.initialize()
-//
-//            val convConfig = ConversationConfig(
-//                systemInstruction = Contents.of(SYSTEM_PROMPT),
-//                samplerConfig = SamplerConfig(
-//                    temperature = 0.1,     // low → reliable tag formatting
-//                    topK        = 40,
-//                    topP        = 0.95
-//                )
-//            )
-//            conversation = engine.createConversation(convConfig)
-//            Log.d(TAG, "Conversation ready.")
-//        }
     }
-
-    // ── Inference ─────────────────────────────────────────────────────────────
 
     /**
      * Sends [userMessage] and returns a cold [Flow] that emits partial
@@ -145,15 +76,11 @@ class LiteRtEngine(
         val conv = requireNotNull(conversation) {
             "Engine not initialized – call initialize() first."
         }
-        // sendMessageAsync returns Flow<Message>; map to the text delta
         return conv.sendMessageAsync(userMessage).map { message: Message ->
-//            message.content.parts.joinToString("") { it.text }
             println("Received message with ${message.contents.contents.size} content parts.")
             message.contents.contents.joinToString("")
         }
     }
-
-    // ── Cleanup ───────────────────────────────────────────────────────────────
 
     fun close() {
         conversation?.close()
@@ -162,8 +89,6 @@ class LiteRtEngine(
         engine = null
         Log.d(TAG, "Engine closed.")
     }
-
-    // ── System prompt ─────────────────────────────────────────────────────────
 
     companion object {
         private val SYSTEM_PROMPT = """
