@@ -17,10 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.adesso.agenticaifunctioncalling.model.ModelState
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Download overlay
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 internal fun DownloadOverlay(state: ModelState.Downloading) {
     Column(

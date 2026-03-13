@@ -43,19 +43,8 @@ class AgentViewModel(
         checkOrDownloadModel(context)
     }
 
-    // ── Model lifecycle ───────────────────────────────────────────────────────
-
-//    private fun checkOrDownloadModel(context: Context) {
-//        if (repository.isModelAvailable()) {
-//            initializeEngine(context)
-//        } else {
-//            downloadModel(context)
-//        }
-//    }
-
     private fun checkOrDownloadModel(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Collect UI progress from the repository's StateFlow
             launch {
                 repository.downloadState.collect { state ->
                     _uiState.update { it.copy(modelState = state) }
@@ -71,25 +60,6 @@ class AgentViewModel(
             }
         }
     }
-
-//    private fun downloadModel(context: Context) {
-//        viewModelScope.launch {
-//            repository.downloadModel().collect { state ->
-//                _uiState.update { it.copy(modelState = state) }
-//                if (state is ModelState.Ready) initializeEngine(context)
-//            }
-//        }
-//    }
-
-    private fun initializeEngine(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            // Engine.initialize() is blocking and can take ~10 s
-            engine.initialize(context)
-            _uiState.update { it.copy(modelState = ModelState.Ready) }
-        }
-    }
-
-    // ── Chat ──────────────────────────────────────────────────────────────────
 
     fun onInputChange(text: String) {
         _uiState.update { it.copy(inputText = text) }
@@ -113,7 +83,6 @@ class AgentViewModel(
     }
 
     private suspend fun streamResponse(userText: String) {
-        // Add a placeholder assistant message we'll update token-by-token
         val placeholderIndex = _uiState.value.messages.size
         _uiState.update { state ->
             state.copy(
@@ -164,8 +133,6 @@ class AgentViewModel(
             state.copy(messages = updated, isThinking = false)
         }
     }
-
-    // ── Cleanup ───────────────────────────────────────────────────────────────
 
     override fun onCleared() {
         super.onCleared()

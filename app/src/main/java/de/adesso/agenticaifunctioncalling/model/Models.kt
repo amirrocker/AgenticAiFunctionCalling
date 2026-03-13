@@ -2,8 +2,6 @@ package de.adesso.agenticaifunctioncalling.model
 
 import kotlinx.serialization.Serializable
 
-// ── Function-call protocol ────────────────────────────────────────────────────
-
 /**
  * A parsed function call extracted from raw LLM output.
  * The LLM writes JSON inside <function_call>…</function_call> tags;
@@ -21,8 +19,6 @@ sealed class FunctionResult {
     data class Failure(val reason: String)  : FunctionResult()
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
-
 enum class Role { USER, ASSISTANT, SYSTEM }
 
 data class ChatMessage(
@@ -32,8 +28,6 @@ data class ChatMessage(
     val functionResult: FunctionResult? = null,
     val isStreaming: Boolean = false
 )
-
-// ── Model download ────────────────────────────────────────────────────────────
 
 data class DownloadProgress(
     val bytesReceived: Long,

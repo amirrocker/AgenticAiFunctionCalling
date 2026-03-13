@@ -46,10 +46,6 @@ import de.adesso.agenticaifunctioncalling.ui.SurfaceUser
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Root screen
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 fun AgentScreen(
     viewModel: AgentViewModel = koinViewModel()
@@ -89,10 +85,6 @@ fun AgentScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TopBar
-// ─────────────────────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AgentTopBar() {
@@ -124,10 +116,6 @@ private fun AgentTopBar() {
         )
     )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Message list
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun MessageList(
@@ -163,10 +151,6 @@ private fun MessageList(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Message bubble
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun MessageBubble(msg: ChatMessage) {
     val isUser = msg.role == Role.USER
@@ -175,7 +159,6 @@ private fun MessageBubble(msg: ChatMessage) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
-        // ── Label ─────────────────────────────────────────────────────────────
         Text(
             text = if (isUser) "Du" else "Assistent",
             fontSize = 11.sp,
@@ -183,7 +166,6 @@ private fun MessageBubble(msg: ChatMessage) {
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
 
-        // ── Chat text ─────────────────────────────────────────────────────────
         if (msg.text.isNotBlank()) {
             Surface(
                 shape = RoundedCornerShape(
@@ -204,10 +186,8 @@ private fun MessageBubble(msg: ChatMessage) {
             }
         }
 
-        // ── Streaming cursor ──────────────────────────────────────────────────
         if (msg.isStreaming) StreamingCursor()
 
-        // ── Function call chip ────────────────────────────────────────────────
         msg.functionCall?.let { call ->
             Spacer(Modifier.height(4.dp))
             Surface(
@@ -234,7 +214,6 @@ private fun MessageBubble(msg: ChatMessage) {
             }
         }
 
-        // ── Function result ───────────────────────────────────────────────────
         msg.functionResult?.let { result ->
             Spacer(Modifier.height(3.dp))
             val (icon, text, tint) = when (result) {
@@ -252,10 +231,6 @@ private fun MessageBubble(msg: ChatMessage) {
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Thinking / streaming indicators
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ThinkingIndicator() {
@@ -305,12 +280,6 @@ private fun StreamingCursor() {
     )
 }
 
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Generic status overlay
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun StatusOverlay(message: String, isError: Boolean = false) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -321,10 +290,6 @@ private fun StatusOverlay(message: String, isError: Boolean = false) {
         )
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Input bar
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun InputBar(
